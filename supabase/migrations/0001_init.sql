@@ -302,20 +302,38 @@ create index on audit_log (table_name, record_id);
 create or replace function fn_audit_log() returns trigger as $$
 declare
   v_org uuid;
+  v_new jsonb := to_jsonb(new);
+  v_old jsonb := to_jsonb(old);
+  v_record_id uuid := coalesce((to_jsonb(new)->>'id')::uuid, (to_jsonb(old)->>'id')::uuid);
 begin
+  -- Not every audited table carries organization_id directly (environments,
+  -- loan_payments reach it only via a parent row), so resolve dynamically
+  -- via jsonb instead of static old.organization_id/new.organization_id
+  -- field access, which fails to compile against those tables' row types.
   v_org := coalesce(
-    case when TG_OP = 'DELETE' then old.organization_id else new.organization_id end,
-    null
+    (case when TG_OP = 'DELETE' then v_old->>'organization_id' else v_new->>'organization_id' end)::uuid,
+    case TG_TABLE_NAME
+      when 'environments' then (
+        select organization_id from properties
+        where id = coalesce((v_new->>'property_id')::uuid, (v_old->>'property_id')::uuid)
+      )
+      when 'loan_payments' then (
+        select organization_id from loans
+        where id = coalesce((v_new->>'loan_id')::uuid, (v_old->>'loan_id')::uuid)
+      )
+      else null
+    end
   );
+
   insert into audit_log (organization_id, table_name, record_id, action, user_id, old_data, new_data)
   values (
     v_org,
     TG_TABLE_NAME,
-    case when TG_OP = 'DELETE' then old.id else new.id end,
+    v_record_id,
     lower(TG_OP)::audit_action,
     auth.uid(),
-    case when TG_OP in ('UPDATE','DELETE') then to_jsonb(old) else null end,
-    case when TG_OP in ('UPDATE','INSERT') then to_jsonb(new) else null end
+    case when TG_OP in ('UPDATE','DELETE') then v_old else null end,
+    case when TG_OP in ('UPDATE','INSERT') then v_new else null end
   );
   return coalesce(new, old);
 end;
