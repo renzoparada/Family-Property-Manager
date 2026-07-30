@@ -4,59 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-// TEMPORARY diagnostic: inspect the inlined env vars for any character
-// outside the Latin-1 range, which breaks the Fetch API's Headers
-// constructor. Remove once the "non ISO-8859-1 code point" bug is found.
-function EnvDebugBanner() {
-  const vars: [string, string | undefined][] = [
-    ["NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL],
-    ["NEXT_PUBLIC_SUPABASE_ANON_KEY", process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY],
-  ];
-
-  return (
-    <div className="mb-4 space-y-2 rounded-lg border border-yellow-600 bg-yellow-950/40 p-3 text-xs text-yellow-200">
-      <p className="font-semibold">Diagnóstico temporal</p>
-      {vars.map(([name, value]) => {
-        if (value === undefined) {
-          return (
-            <p key={name}>
-              {name}: <span className="text-red-400">NO DEFINIDA</span>
-            </p>
-          );
-        }
-        let badIndex = -1;
-        let badCode = -1;
-        for (let i = 0; i < value.length; i++) {
-          const code = value.charCodeAt(i);
-          if (code > 255) {
-            badIndex = i;
-            badCode = code;
-            break;
-          }
-        }
-        return (
-          <div key={name}>
-            <p>
-              {name}: longitud {value.length}, primeros 12: <code>{value.slice(0, 12)}</code>,
-              últimos 12: <code>{value.slice(-12)}</code>
-            </p>
-            <p>
-              {badIndex === -1 ? (
-                <span className="text-green-400">Sin caracteres fuera de rango.</span>
-              ) : (
-                <span className="text-red-400">
-                  Carácter fuera de rango en posición {badIndex}: código {badCode} (
-                  {JSON.stringify(value.slice(Math.max(0, badIndex - 5), badIndex + 5))})
-                </span>
-              )}
-            </p>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
@@ -123,7 +70,6 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-6">
-          <EnvDebugBanner />
           <div className="mb-5 flex rounded-lg bg-[var(--color-subtle)] p-1 text-sm">
             <button
               type="button"
