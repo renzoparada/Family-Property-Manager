@@ -68,11 +68,15 @@ export function ExpensesClient({
 
   const total = useMemo(() => filtered.reduce((s, e) => s + Number(e.amount), 0), [filtered]);
 
-  function runAction(fn: () => Promise<void>, onDone?: () => void) {
+  function runAction(fn: () => Promise<{ error: string | null }>, onDone?: () => void) {
     setError(null);
     startTransition(async () => {
       try {
-        await fn();
+        const result = await fn();
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
         onDone?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Ocurrió un error.");

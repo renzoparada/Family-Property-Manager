@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireWriteContext, parseAmount, str } from "@/lib/actions/util";
+import { requireWriteContext, parseAmount, str, safeAction, type ActionResult } from "@/lib/actions/util";
 import type { PaymentMethod } from "@/lib/types";
 
 async function syncTransaction(
@@ -46,85 +46,94 @@ export async function createExpenseCategory(name: string) {
   return data;
 }
 
-export async function createExpense(formData: FormData) {
-  const { supabase, orgId, userId } = await requireWriteContext();
+export async function createExpense(formData: FormData): Promise<ActionResult> {
+  return safeAction(async () => {
+    const { supabase, orgId, userId } = await requireWriteContext();
 
-  const propertyId = str(formData.get("property_id"));
-  if (!propertyId) throw new Error("Selecciona una propiedad.");
-  const amount = parseAmount(formData.get("amount"));
-  const date = str(formData.get("date")) ?? new Date().toISOString().slice(0, 10);
-  const description = str(formData.get("description"));
-  const accountId = str(formData.get("account_id"));
+    const propertyId = str(formData.get("property_id"));
+    if (!propertyId) throw new Error("Selecciona una propiedad.");
+    const amount = parseAmount(formData.get("amount"));
+    const date = str(formData.get("date")) ?? new Date().toISOString().slice(0, 10);
+    const description = str(formData.get("description"));
+    const accountId = str(formData.get("account_id"));
 
-  const { data, error } = await supabase
-    .from("expenses")
-    .insert({
-      organization_id: orgId,
-      property_id: propertyId,
-      environment_id: str(formData.get("environment_id")),
-      category_id: str(formData.get("category_id")),
-      date,
-      amount,
-      description,
-      paid_by: str(formData.get("paid_by")),
-      paid_to: str(formData.get("paid_to")),
-      payment_method: (str(formData.get("payment_method")) ?? "caja") as PaymentMethod,
-      account_id: accountId,
-      notes: str(formData.get("notes")),
-      created_by: userId,
-    })
-    .select()
-    .single();
-  if (error) throw new Error(error.message);
+    const { data, error } = await supabase
+      .from("expenses")
+      .insert({
+        organization_id: orgId,
+        property_id: propertyId,
+        environment_id: str(formData.get("environment_id")),
+        category_id: str(formData.get("category_id")),
+        date,
+        amount,
+        description,
+        paid_by: str(formData.get("paid_by")),
+        paid_to: str(formData.get("paid_to")),
+        payment_method: (str(formData.get("payment_method")) ?? "caja") as PaymentMethod,
+        account_id: accountId,
+        notes: str(formData.get("notes")),
+        created_by: userId,
+      })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
 
-  await syncTransaction(supabase, orgId, userId, data.id, accountId, amount, date, description);
+    await syncTransaction(supabase, orgId, userId, data.id, accountId, amount, date, description);
 
-  revalidatePath("/expenses");
-  revalidatePath("/dashboard");
-  revalidatePath("/accounts");
+    revalidatePath("/expenses");
+    revalidatePath("/dashboard");
+    revalidatePath("/accounts");
+    return { error: null };
+  });
 }
 
-export async function updateExpense(expenseId: string, formData: FormData) {
-  const { supabase, orgId, userId } = await requireWriteContext();
+export async function updateExpense(expenseId: string, formData: FormData): Promise<ActionResult> {
+  return safeAction(async () => {
+    const { supabase, orgId, userId } = await requireWriteContext();
 
-  const propertyId = str(formData.get("property_id"));
-  if (!propertyId) throw new Error("Selecciona una propiedad.");
-  const amount = parseAmount(formData.get("amount"));
-  const date = str(formData.get("date")) ?? new Date().toISOString().slice(0, 10);
-  const description = str(formData.get("description"));
-  const accountId = str(formData.get("account_id"));
+    const propertyId = str(formData.get("property_id"));
+    if (!propertyId) throw new Error("Selecciona una propiedad.");
+    const amount = parseAmount(formData.get("amount"));
+    const date = str(formData.get("date")) ?? new Date().toISOString().slice(0, 10);
+    const description = str(formData.get("description"));
+    const accountId = str(formData.get("account_id"));
 
-  const { error } = await supabase
-    .from("expenses")
-    .update({
-      property_id: propertyId,
-      environment_id: str(formData.get("environment_id")),
-      category_id: str(formData.get("category_id")),
-      date,
-      amount,
-      description,
-      paid_by: str(formData.get("paid_by")),
-      paid_to: str(formData.get("paid_to")),
-      payment_method: (str(formData.get("payment_method")) ?? "caja") as PaymentMethod,
-      account_id: accountId,
-      notes: str(formData.get("notes")),
-    })
-    .eq("id", expenseId);
-  if (error) throw new Error(error.message);
+    const { error } = await supabase
+      .from("expenses")
+      .update({
+        property_id: propertyId,
+        environment_id: str(formData.get("environment_id")),
+        category_id: str(formData.get("category_id")),
+        date,
+        amount,
+        description,
+        paid_by: str(formData.get("paid_by")),
+        paid_to: str(formData.get("paid_to")),
+        payment_method: (str(formData.get("payment_method")) ?? "caja") as PaymentMethod,
+        account_id: accountId,
+        notes: str(formData.get("notes")),
+      })
+      .eq("id", expenseId);
+    if (error) throw new Error(error.message);
 
-  await syncTransaction(supabase, orgId, userId, expenseId, accountId, amount, date, description);
+    await syncTransaction(supabase, orgId, userId, expenseId, accountId, amount, date, description);
 
-  revalidatePath("/expenses");
-  revalidatePath("/dashboard");
-  revalidatePath("/accounts");
+    revalidatePath("/expenses");
+    revalidatePath("/dashboard");
+    revalidatePath("/accounts");
+    return { error: null };
+  });
 }
 
-export async function deleteExpense(expenseId: string) {
-  const { supabase } = await requireWriteContext();
-  await supabase.from("transactions").delete().eq("source_type", "expense").eq("source_id", expenseId);
-  const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
-  if (error) throw new Error(error.message);
-  revalidatePath("/expenses");
-  revalidatePath("/dashboard");
-  revalidatePath("/accounts");
+export async function deleteExpense(expenseId: string): Promise<ActionResult> {
+  return safeAction(async () => {
+    const { supabase } = await requireWriteContext();
+    await supabase.from("transactions").delete().eq("source_type", "expense").eq("source_id", expenseId);
+    const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
+    if (error) throw new Error(error.message);
+    revalidatePath("/expenses");
+    revalidatePath("/dashboard");
+    revalidatePath("/accounts");
+    return { error: null };
+  });
 }

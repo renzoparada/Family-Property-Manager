@@ -32,11 +32,15 @@ export function PropertiesClient({
     return environments.filter((e) => e.property_id === propertyId);
   }
 
-  function runAction(fn: () => Promise<void>, onDone?: () => void) {
+  function runAction(fn: () => Promise<{ error: string | null }>, onDone?: () => void) {
     setError(null);
     startTransition(async () => {
       try {
-        await fn();
+        const result = await fn();
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
         onDone?.();
       } catch (e) {
         setError(e instanceof Error ? e.message : "Ocurrió un error.");

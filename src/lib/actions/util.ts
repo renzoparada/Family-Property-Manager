@@ -35,3 +35,21 @@ export function str(value: FormDataEntryValue | null): string | null {
   const s = (value ?? "").toString().trim();
   return s.length ? s : null;
 }
+
+export type ActionResult = { error: string | null };
+
+/**
+ * Next.js redacts the message of any error thrown out of a Server Action in
+ * production ("omitted in production builds..."), so callers only ever see
+ * a useless digest. Run the action body through this instead and RETURN
+ * the result — returned values aren't redacted, thrown ones are.
+ */
+export async function safeAction<T extends ActionResult>(
+  fn: () => Promise<T>
+): Promise<T | ActionResult> {
+  try {
+    return await fn();
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Ocurrió un error inesperado." };
+  }
+}
