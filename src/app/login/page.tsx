@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+type Mode = "signin" | "signup" | "forgot";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -20,6 +22,19 @@ export default function LoginPage() {
     setError(null);
     setNotice(null);
     const supabase = createClient();
+
+    if (mode === "forgot") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
+      });
+      if (error) {
+        setError(error.message);
+      } else {
+        setNotice("Si ese correo tiene una cuenta, te enviamos un enlace para restablecer tu contraseña.");
+      }
+      setLoading(false);
+      return;
+    }
 
     if (mode === "signin") {
       const { error } = await supabase.auth.signInWithPassword({
@@ -54,6 +69,12 @@ export default function LoginPage() {
     setLoading(false);
   }
 
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setNotice(null);
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--color-canvas)] px-4">
       <div className="w-full max-w-sm">
@@ -70,30 +91,43 @@ export default function LoginPage() {
         </div>
 
         <div className="card p-6">
-          <div className="mb-5 flex rounded-lg bg-[var(--color-subtle)] p-1 text-sm">
-            <button
-              type="button"
-              onClick={() => setMode("signin")}
-              className={`flex-1 rounded-md py-1.5 font-medium transition ${
-                mode === "signin"
-                  ? "bg-[var(--color-surface)] shadow-sm"
-                  : "text-[var(--color-muted)]"
-              }`}
-            >
-              Iniciar sesión
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("signup")}
-              className={`flex-1 rounded-md py-1.5 font-medium transition ${
-                mode === "signup"
-                  ? "bg-[var(--color-surface)] shadow-sm"
-                  : "text-[var(--color-muted)]"
-              }`}
-            >
-              Crear cuenta
-            </button>
-          </div>
+          {mode !== "forgot" && (
+            <div className="mb-5 flex rounded-lg bg-[var(--color-subtle)] p-1 text-sm">
+              <button
+                type="button"
+                onClick={() => switchMode("signin")}
+                className={`flex-1 rounded-md py-1.5 font-medium transition ${
+                  mode === "signin"
+                    ? "bg-[var(--color-surface)] shadow-sm"
+                    : "text-[var(--color-muted)]"
+                }`}
+              >
+                Iniciar sesión
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("signup")}
+                className={`flex-1 rounded-md py-1.5 font-medium transition ${
+                  mode === "signup"
+                    ? "bg-[var(--color-surface)] shadow-sm"
+                    : "text-[var(--color-muted)]"
+                }`}
+              >
+                Crear cuenta
+              </button>
+            </div>
+          )}
+
+          {mode === "forgot" && (
+            <div className="mb-4">
+              <h2 className="text-sm font-semibold text-[var(--color-ink)]">
+                Recuperar contraseña
+              </h2>
+              <p className="mt-1 text-xs text-[var(--color-muted)]">
+                Ingresa tu correo y te enviaremos un enlace para elegir una nueva contraseña.
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-3">
             {mode === "signup" && (
@@ -113,15 +147,26 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <input
-              className="input"
-              type="password"
-              placeholder="Contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={6}
-              required
-            />
+            {mode !== "forgot" && (
+              <input
+                className="input"
+                type="password"
+                placeholder="Contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                minLength={6}
+                required
+              />
+            )}
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={() => switchMode("forgot")}
+                className="text-xs text-[var(--color-accent)]"
+              >
+                ¿Olvidaste tu contraseña?
+              </button>
+            )}
             {error && <p className="text-sm text-[var(--color-danger)]">{error}</p>}
             {notice && <p className="text-sm text-[var(--color-success)]">{notice}</p>}
             <button type="submit" disabled={loading} className="btn-primary w-full">
@@ -129,8 +174,19 @@ export default function LoginPage() {
                 ? "Un momento…"
                 : mode === "signin"
                 ? "Iniciar sesión"
-                : "Crear cuenta"}
+                : mode === "signup"
+                ? "Crear cuenta"
+                : "Enviar enlace"}
             </button>
+            {mode === "forgot" && (
+              <button
+                type="button"
+                onClick={() => switchMode("signin")}
+                className="w-full text-center text-xs text-[var(--color-muted)]"
+              >
+                Volver a iniciar sesión
+              </button>
+            )}
           </form>
         </div>
       </div>
