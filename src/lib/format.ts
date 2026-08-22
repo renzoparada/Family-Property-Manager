@@ -30,6 +30,20 @@ export function monthLabel(date: Date) {
   }).format(date);
 }
 
+export function formatLastSeen(date: string | null) {
+  if (!date) return "Nunca";
+  const then = new Date(date).getTime();
+  const diffMs = Date.now() - then;
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 1) return "Ahora mismo";
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `hace ${days} d`;
+  return formatDate(date);
+}
+
 export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }

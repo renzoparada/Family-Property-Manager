@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatLastSeen } from "@/lib/format";
 import { inviteMember, updateMemberRole, removeMember } from "@/lib/actions/members";
 import type { MemberRole, OrganizationMember } from "@/lib/types";
 
@@ -59,6 +59,7 @@ export function MembersClient({
               <th>WhatsApp</th>
               <th>Rol</th>
               <th>Desde</th>
+              <th>Última actividad</th>
               <th></th>
             </tr>
           </thead>
@@ -85,6 +86,9 @@ export function MembersClient({
                   </select>
                 </td>
                 <td>{formatDate(m.created_at)}</td>
+                <td className="text-xs text-[var(--color-muted)]">
+                  {formatLastSeen(m.profile?.last_seen_at ?? null)}
+                </td>
                 <td>
                   {m.user_id !== currentUserId && (
                     <button
