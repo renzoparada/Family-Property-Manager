@@ -12,13 +12,13 @@ export async function inviteMember(formData: FormData): Promise<ActionResult> {
     const role = (str(formData.get("role")) ?? "socio") as MemberRole;
     if (!email) throw new Error("Ingresa un correo.");
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
+    const { data: userId, error: lookupError } = await supabase.rpc(
+      "fn_find_user_id_by_email",
+      { p_email: email }
+    );
+    if (lookupError) throw new Error(lookupError.message);
 
-    if (!profile) {
+    if (!userId) {
       throw new Error(
         "Esa persona todavía no tiene cuenta. Pídele que se registre en la app con ese correo y vuelve a intentarlo."
       );
@@ -26,7 +26,7 @@ export async function inviteMember(formData: FormData): Promise<ActionResult> {
 
     const { error } = await supabase.from("organization_members").insert({
       organization_id: orgId,
-      user_id: profile.id,
+      user_id: userId,
       role,
       initial_share_percentage: 0,
     });
