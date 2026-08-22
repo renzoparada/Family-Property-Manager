@@ -36,6 +36,7 @@ export function ExpensesClient({
   accounts,
   categories,
   members,
+  attachmentCounts,
   currency,
   canWrite,
 }: {
@@ -45,6 +46,7 @@ export function ExpensesClient({
   accounts: Account[];
   categories: ExpenseCategory[];
   members: OrganizationMember[];
+  attachmentCounts: Record<string, number>;
   currency: string;
   canWrite: boolean;
 }) {
@@ -86,6 +88,26 @@ export function ExpensesClient({
 
   function categoryName(id: string | null) {
     return categoryList.find((c) => c.id === id)?.name ?? "Sin categoría";
+  }
+
+  // Reopens the newly-created expense in edit mode so attachments can be
+  // added right away — AttachmentUploader needs a real entity id, which
+  // doesn't exist until the record is saved.
+  function handleCreateSubmit(fd: FormData) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result = await createExpense(fd);
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        setCreating(false);
+        if (result.data) setEditing(result.data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Ocurrió un error.");
+      }
+    });
   }
 
   return (
@@ -132,6 +154,7 @@ export function ExpensesClient({
                 <th>Descripción</th>
                 <th>Método</th>
                 <th>Monto</th>
+                <th>Adjuntos</th>
                 <th></th>
               </tr>
             </thead>
@@ -144,6 +167,19 @@ export function ExpensesClient({
                   <td className="max-w-[220px] truncate">{e.description}</td>
                   <td>{PAYMENT_METHOD_LABEL[e.payment_method]}</td>
                   <td className="text-[var(--color-expense)]">{formatCurrency(e.amount, currency)}</td>
+                  <td>
+                    {attachmentCounts[e.id] ? (
+                      <button
+                        className="badge bg-[var(--color-accent)]/15 text-[var(--color-accent)]"
+                        onClick={() => setEditing(e)}
+                        title="Ver adjuntos"
+                      >
+                        {attachmentCounts[e.id]} adjunto{attachmentCounts[e.id] > 1 ? "s" : ""}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-[var(--color-muted)]">—</span>
+                    )}
+                  </td>
                   <td>
                     {canWrite && (
                       <button className="btn-ghost !px-2 text-xs" onClick={() => setEditing(e)}>
@@ -172,7 +208,7 @@ export function ExpensesClient({
             return cat as ExpenseCategory;
           }}
           onClose={() => setCreating(false)}
-          onSubmit={(fd) => runAction(() => createExpense(fd), () => setCreating(false))}
+          onSubmit={handleCreateSubmit}
           pending={pending}
         />
       )}

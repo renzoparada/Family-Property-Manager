@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireWriteContext, parseAmount, str, safeAction, type ActionResult } from "@/lib/actions/util";
-import type { PaymentMethod } from "@/lib/types";
+import type { Expense, PaymentMethod } from "@/lib/types";
+
+export type CreateExpenseResult = ActionResult & { data?: Expense };
 
 async function syncTransaction(
   supabase: Awaited<ReturnType<typeof requireWriteContext>>["supabase"],
@@ -46,7 +48,7 @@ export async function createExpenseCategory(name: string) {
   return data;
 }
 
-export async function createExpense(formData: FormData): Promise<ActionResult> {
+export async function createExpense(formData: FormData): Promise<CreateExpenseResult> {
   return safeAction(async () => {
     const { supabase, orgId, userId } = await requireWriteContext();
 
@@ -83,7 +85,7 @@ export async function createExpense(formData: FormData): Promise<ActionResult> {
     revalidatePath("/expenses");
     revalidatePath("/dashboard");
     revalidatePath("/accounts");
-    return { error: null };
+    return { error: null, data: data as Expense };
   });
 }
 

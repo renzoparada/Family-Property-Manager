@@ -25,6 +25,7 @@ export default async function ExpensesPage() {
     { data: categories },
     { data: org },
     { data: members },
+    { data: attachments },
   ] = await Promise.all([
     supabase
       .from("expenses")
@@ -56,7 +57,17 @@ export default async function ExpensesPage() {
       .from("organization_members")
       .select("*, profile:profiles(*)")
       .eq("organization_id", session.activeOrgId),
+    supabase
+      .from("attachments")
+      .select("entity_id")
+      .eq("organization_id", session.activeOrgId)
+      .eq("entity_type", "expense"),
   ]);
+
+  const attachmentCounts: Record<string, number> = {};
+  for (const a of attachments ?? []) {
+    attachmentCounts[a.entity_id] = (attachmentCounts[a.entity_id] ?? 0) + 1;
+  }
 
   return (
     <div>
@@ -68,6 +79,7 @@ export default async function ExpensesPage() {
         accounts={(accounts ?? []) as Account[]}
         categories={(categories ?? []) as ExpenseCategory[]}
         members={(members ?? []) as unknown as OrganizationMember[]}
+        attachmentCounts={attachmentCounts}
         currency={org?.currency ?? "BOB"}
         canWrite={canWrite(session.activeRole)}
       />
