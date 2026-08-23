@@ -101,6 +101,14 @@ export default async function DashboardPage() {
     return { name: acc.name, balance: acc.opening_balance + moved };
   });
 
+  // Real cash-on-hand: opening balances + every movement (income, expenses,
+  // loans received, investments, manual adjustments). Deliberately different
+  // from "Utilidad acumulada" below, which is only reservation income minus
+  // expenses — loans and investments fund the business without counting as
+  // profit, per how préstamos/inversiones are meant to stay separate from
+  // operating income.
+  const totalCashBalance = balances.reduce((s, b) => s + b.balance, 0);
+
   return (
     <div>
       <PageHeader title="Panel" description={org?.name ? `Resumen financiero de ${org.name}` : undefined} />
@@ -120,6 +128,10 @@ export default async function DashboardPage() {
           label="Utilidad acumulada"
           value={formatCurrency(accumulatedProfit, currency)}
           accent={accumulatedProfit >= 0 ? "income" : "expense"}
+        />
+        <StatCard
+          label="Saldo en caja y bancos"
+          value={formatCurrency(totalCashBalance, currency)}
         />
         <StatCard label="Cuentas activas" value={String(allAccounts.length)} />
       </div>
