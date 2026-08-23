@@ -6,21 +6,29 @@ export function formatCurrency(amount: number, currency = "BOB") {
   }).format(amount ?? 0);
 }
 
+// Plain "date" columns (e.g. expenses.date) come back as "YYYY-MM-DD" and
+// need the "T00:00:00" suffix so they parse in local time instead of UTC.
+// "timestamptz" columns (e.g. created_at, last_seen_at) already come back
+// as full ISO strings — appending another time-of-day to those produces an
+// invalid string that crashes Intl.DateTimeFormat. Only pad the former.
+function toDate(date: string | Date) {
+  if (typeof date !== "string") return date;
+  return new Date(date.includes("T") ? date : date + "T00:00:00");
+}
+
 export function formatDate(date: string | Date) {
-  const d = typeof date === "string" ? new Date(date + "T00:00:00") : date;
   return new Intl.DateTimeFormat("es-BO", {
     day: "2-digit",
     month: "short",
     year: "numeric",
-  }).format(d);
+  }).format(toDate(date));
 }
 
 export function formatDateShort(date: string | Date) {
-  const d = typeof date === "string" ? new Date(date + "T00:00:00") : date;
   return new Intl.DateTimeFormat("es-BO", {
     day: "2-digit",
     month: "2-digit",
-  }).format(d);
+  }).format(toDate(date));
 }
 
 export function monthLabel(date: Date) {
