@@ -328,14 +328,21 @@ function ReservationForm({
 
         <div>
           <label className="label">Cuenta destino (si está pagado)</label>
-          <select className="input" name="account_id" defaultValue={reservation?.account_id ?? ""}>
-            <option value="">—</option>
+          <select
+            className="input"
+            name="account_id"
+            defaultValue={reservation?.account_id ?? (accounts.length === 1 ? accounts[0].id : "")}
+          >
+            <option value="">— (no se acredita a ninguna cuenta)</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name}
               </option>
             ))}
           </select>
+          <p className="mt-1 text-xs text-[var(--color-muted)]">
+            Si dejas esto en “—”, el ingreso no se sumará al saldo de Caja y bancos.
+          </p>
         </div>
 
         <div>

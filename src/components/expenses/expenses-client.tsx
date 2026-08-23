@@ -390,14 +390,23 @@ function ExpenseForm({
           </div>
           <div>
             <label className="label">Cuenta (afecta saldo)</label>
-            <select className="input" name="account_id" defaultValue={expense?.account_id ?? ""}>
-              <option value="">—</option>
+            <select
+              className="input"
+              name="account_id"
+              defaultValue={
+                expense?.account_id ?? (accounts.length === 1 ? accounts[0].id : "")
+              }
+            >
+              <option value="">— (no descuenta de ninguna cuenta)</option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.name}
                 </option>
               ))}
             </select>
+            <p className="mt-1 text-xs text-[var(--color-muted)]">
+              Si dejas esto en “—”, el gasto no se restará del saldo de Caja y bancos.
+            </p>
           </div>
         </div>
 
