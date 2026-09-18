@@ -11,6 +11,7 @@ import {
   createReservation,
   updateReservation,
   deleteReservation,
+  type ReservationFormResult,
 } from "@/lib/actions/reservations";
 import type {
   Account,
@@ -81,6 +82,26 @@ export function ReservationsClient({
     });
   }
 
+  // Reopens the newly-created reservation in edit mode so comprobantes can
+  // be attached right away — AttachmentUploader needs a real entity id,
+  // which doesn't exist until the record is saved.
+  function handleCreateSubmit(fd: FormData) {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result: ReservationFormResult = await createReservation(fd);
+        if (result.error) {
+          setError(result.error);
+          return;
+        }
+        setCreating(false);
+        if (result.data) setEditing(result.data);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Ocurrió un error.");
+      }
+    });
+  }
+
   return (
     <div>
       {canWrite && (
@@ -122,6 +143,7 @@ export function ReservationsClient({
                 <th>Huésped</th>
                 <th>Plataforma</th>
                 <th>Neto</th>
+                <th>Saldo</th>
                 <th>Estado</th>
                 <th></th>
               </tr>
@@ -143,6 +165,9 @@ export function ReservationsClient({
                   <td>{PLATFORM_LABEL[r.platform]}</td>
                   <td className="text-[var(--color-income)]">
                     {formatCurrency(r.net_amount, currency)}
+                  </td>
+                  <td className={r.balance_amount > 0 ? "text-[var(--color-warning)]" : "text-[var(--color-muted)]"}>
+                    {formatCurrency(r.balance_amount, currency)}
                   </td>
                   <td>
                     <StatusBadge status={r.status} />
@@ -168,9 +193,7 @@ export function ReservationsClient({
           environments={environments}
           accounts={accounts}
           onClose={() => setCreating(false)}
-          onSubmit={(fd) =>
-            runAction(() => createReservation(fd), () => setCreating(false))
-          }
+          onSubmit={handleCreateSubmit}
           pending={pending}
         />
       )}
@@ -231,7 +254,9 @@ function ReservationForm({
   const [propertyId, setPropertyId] = useState(reservation?.property_id ?? properties[0]?.id ?? "");
   const [gross, setGross] = useState(reservation?.gross_amount ?? 0);
   const [commission, setCommission] = useState(reservation?.commission_amount ?? 0);
+  const [deposit, setDeposit] = useState(reservation?.deposit_amount ?? 0);
   const [attachments, setAttachments] = useAttachments("reservation", reservation?.id);
+  const balance = gross - commission - deposit;
 
   const envsForProperty = environments.filter((e) => e.property_id === propertyId);
 
@@ -315,7 +340,7 @@ function ReservationForm({
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Monto recibido</label>
+            <label className="label">Monto total pactado</label>
             <input
               className="input"
               name="gross_amount"
@@ -326,7 +351,7 @@ function ReservationForm({
             />
           </div>
           <div>
-            <label className="label">Comisión</label>
+            <label className="label">Comisión de la plataforma</label>
             <input
               className="input"
               name="commission_amount"
@@ -337,9 +362,29 @@ function ReservationForm({
             />
           </div>
         </div>
-        <p className="text-xs text-[var(--color-muted)]">
-          Monto neto: <span className="font-medium text-[var(--color-ink)]">{(gross - commission).toFixed(2)}</span>
-        </p>
+
+        <div>
+          <label className="label">Anticipo / seña recibida</label>
+          <input
+            className="input"
+            name="deposit_amount"
+            type="number"
+            step="0.01"
+            value={deposit}
+            onChange={(e) => setDeposit(Number(e.target.value))}
+          />
+        </div>
+
+        <div className="rounded-md bg-[var(--color-subtle)] p-3 text-xs">
+          <div className="flex justify-between">
+            <span className="text-[var(--color-muted)]">Monto neto (total − comisión)</span>
+            <span className="font-medium text-[var(--color-ink)]">{(gross - commission).toFixed(2)}</span>
+          </div>
+          <div className="mt-1 flex justify-between">
+            <span className="text-[var(--color-muted)]">Saldo pendiente por cobrar</span>
+            <span className="font-medium text-[var(--color-ink)]">{balance.toFixed(2)}</span>
+          </div>
+        </div>
 
         <div>
           <label className="label">Cuenta destino (si está pagado)</label>

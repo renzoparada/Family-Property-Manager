@@ -68,9 +68,11 @@ export default async function DashboardPage() {
     return sum + (Number(loan.amount) - paid);
   }, 0);
 
+  // The deposit already posted to Caja y bancos when it was received, so
+  // what's genuinely still owed is the balance, not the full net amount.
   const pendingReservationsAmount = allReservations
     .filter((r) => r.status === "pendiente")
-    .reduce((s, r) => s + Number(r.net_amount), 0);
+    .reduce((s, r) => s + Number(r.balance_amount), 0);
 
   const totalIncome = allReservations
     .filter((r) => r.status === "pagado")

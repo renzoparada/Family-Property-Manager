@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireWriteContext, parseAmount, str, safeAction, type ActionResult } from "@/lib/actions/util";
-import type { ReservationPlatform, ReservationStatus } from "@/lib/types";
+import type { Reservation, ReservationPlatform, ReservationStatus } from "@/lib/types";
 
 async function syncTransaction(
   supabase: Awaited<ReturnType<typeof requireWriteContext>>["supabase"],
@@ -12,6 +12,7 @@ async function syncTransaction(
   status: ReservationStatus,
   accountId: string | null,
   netAmount: number,
+  depositAmount: number,
   date: string,
   guestName: string
 ) {
@@ -21,21 +22,58 @@ async function syncTransaction(
     .eq("source_type", "reservation")
     .eq("source_id", reservationId);
 
-  if (status === "pagado" && accountId) {
-    await supabase.from("transactions").insert({
+  if (!accountId) return;
+
+  const rows: {
+    organization_id: string;
+    account_id: string;
+    date: string;
+    amount: number;
+    description: string;
+    source_type: string;
+    source_id: string;
+    created_by: string;
+  }[] = [];
+
+  // The deposit is cash actually received at booking time, regardless of
+  // whether the stay is fully paid yet — it posts as soon as it exists.
+  if (depositAmount > 0) {
+    rows.push({
       organization_id: orgId,
       account_id: accountId,
       date,
-      amount: netAmount,
-      description: `Reserva — ${guestName}`,
+      amount: depositAmount,
+      description: `Anticipo — ${guestName}`,
       source_type: "reservation",
       source_id: reservationId,
       created_by: userId,
     });
   }
+
+  // The remaining balance only posts once the reservation is marked as
+  // fully paid — until then it's a receivable, not cash in hand.
+  const balance = netAmount - depositAmount;
+  if (status === "pagado" && balance > 0) {
+    rows.push({
+      organization_id: orgId,
+      account_id: accountId,
+      date,
+      amount: balance,
+      description: `Saldo — ${guestName}`,
+      source_type: "reservation",
+      source_id: reservationId,
+      created_by: userId,
+    });
+  }
+
+  if (rows.length > 0) {
+    await supabase.from("transactions").insert(rows);
+  }
 }
 
-export async function createReservation(formData: FormData): Promise<ActionResult> {
+export type ReservationFormResult = ActionResult & { data?: Reservation };
+
+export async function createReservation(formData: FormData): Promise<ReservationFormResult> {
   return safeAction(async () => {
     const { supabase, orgId, userId } = await requireWriteContext();
 
@@ -49,6 +87,10 @@ export async function createReservation(formData: FormData): Promise<ActionResul
 
     const grossAmount = parseAmount(formData.get("gross_amount"));
     const commissionAmount = parseAmount(formData.get("commission_amount"));
+    const depositAmount = parseAmount(formData.get("deposit_amount"));
+    if (depositAmount > grossAmount) {
+      throw new Error("El anticipo no puede ser mayor al monto total pactado.");
+    }
     const status = (str(formData.get("status")) ?? "pendiente") as ReservationStatus;
     const accountId = str(formData.get("account_id"));
 
@@ -64,6 +106,7 @@ export async function createReservation(formData: FormData): Promise<ActionResul
         platform: (str(formData.get("platform")) ?? "directo") as ReservationPlatform,
         gross_amount: grossAmount,
         commission_amount: commissionAmount,
+        deposit_amount: depositAmount,
         status,
         account_id: accountId,
         notes: str(formData.get("notes")),
@@ -81,6 +124,7 @@ export async function createReservation(formData: FormData): Promise<ActionResul
       status,
       accountId,
       grossAmount - commissionAmount,
+      depositAmount,
       checkIn,
       guestName
     );
@@ -88,7 +132,7 @@ export async function createReservation(formData: FormData): Promise<ActionResul
     revalidatePath("/reservations");
     revalidatePath("/dashboard");
     revalidatePath("/accounts");
-    return { error: null };
+    return { error: null, data: data as Reservation };
   });
 }
 
@@ -106,6 +150,10 @@ export async function updateReservation(reservationId: string, formData: FormDat
 
     const grossAmount = parseAmount(formData.get("gross_amount"));
     const commissionAmount = parseAmount(formData.get("commission_amount"));
+    const depositAmount = parseAmount(formData.get("deposit_amount"));
+    if (depositAmount > grossAmount) {
+      throw new Error("El anticipo no puede ser mayor al monto total pactado.");
+    }
     const status = (str(formData.get("status")) ?? "pendiente") as ReservationStatus;
     const accountId = str(formData.get("account_id"));
 
@@ -120,6 +168,7 @@ export async function updateReservation(reservationId: string, formData: FormDat
         platform: (str(formData.get("platform")) ?? "directo") as ReservationPlatform,
         gross_amount: grossAmount,
         commission_amount: commissionAmount,
+        deposit_amount: depositAmount,
         status,
         account_id: accountId,
         notes: str(formData.get("notes")),
@@ -135,6 +184,7 @@ export async function updateReservation(reservationId: string, formData: FormDat
       status,
       accountId,
       grossAmount - commissionAmount,
+      depositAmount,
       checkIn,
       guestName
     );

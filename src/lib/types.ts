@@ -99,6 +99,8 @@ export interface Reservation {
   gross_amount: number;
   commission_amount: number;
   net_amount: number;
+  deposit_amount: number;
+  balance_amount: number;
   status: ReservationStatus;
   account_id: string | null;
   notes: string | null;
