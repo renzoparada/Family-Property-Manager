@@ -102,9 +102,25 @@ export interface Reservation {
   status: ReservationStatus;
   account_id: string | null;
   notes: string | null;
+  ical_feed_id: string | null;
+  external_uid: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface IcalFeed {
+  id: string;
+  organization_id: string;
+  property_id: string;
+  environment_id: string | null;
+  platform: ReservationPlatform;
+  url: string;
+  last_synced_at: string | null;
+  last_sync_status: string | null;
+  last_sync_error: string | null;
+  created_by: string | null;
+  created_at: string;
 }
 
 export interface ExpenseCategory {
@@ -243,6 +259,7 @@ export interface Database {
       profit_distribution_lines: TableDef<ProfitDistributionLine>;
       attachments: TableDef<Attachment>;
       audit_log: TableDef<AuditLog>;
+      ical_feeds: TableDef<IcalFeed>;
     };
   };
 }

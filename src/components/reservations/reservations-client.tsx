@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AttachmentUploader } from "@/components/ui/attachment-uploader";
+import { IcalFeedsPanel } from "@/components/reservations/ical-feeds-panel";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useAttachments } from "@/lib/use-attachments";
 import {
@@ -14,6 +15,7 @@ import {
 import type {
   Account,
   Environment,
+  IcalFeed,
   Property,
   Reservation,
 } from "@/lib/types";
@@ -37,6 +39,7 @@ export function ReservationsClient({
   properties,
   environments,
   accounts,
+  icalFeeds,
   currency,
   canWrite,
 }: {
@@ -44,6 +47,7 @@ export function ReservationsClient({
   properties: Property[];
   environments: Environment[];
   accounts: Account[];
+  icalFeeds: IcalFeed[];
   currency: string;
   canWrite: boolean;
 }) {
@@ -79,6 +83,10 @@ export function ReservationsClient({
 
   return (
     <div>
+      {canWrite && (
+        <IcalFeedsPanel feeds={icalFeeds} properties={properties} environments={environments} />
+      )}
+
       <div className="mb-4 flex flex-wrap items-center gap-3">
         {canWrite && (
           <button className="btn-primary" onClick={() => setCreating(true)}>
@@ -124,7 +132,14 @@ export function ReservationsClient({
                   <td>{formatDate(r.check_in)}</td>
                   <td>{formatDate(r.check_out)}</td>
                   <td>{properties.find((p) => p.id === r.property_id)?.name ?? "—"}</td>
-                  <td>{r.guest_name}</td>
+                  <td>
+                    {r.guest_name}
+                    {r.ical_feed_id && (
+                      <span className="ml-1 text-xs text-[var(--color-muted)]" title="Importado por iCal">
+                        🔗
+                      </span>
+                    )}
+                  </td>
                   <td>{PLATFORM_LABEL[r.platform]}</td>
                   <td className="text-[var(--color-income)]">
                     {formatCurrency(r.net_amount, currency)}
