@@ -18,6 +18,8 @@ export type PaymentMethod =
   | "tarjeta";
 export type AccountType = "caja" | "banco";
 export type LoanStatus = "pendiente" | "parcial" | "pagado";
+export type NeedStatus = "pendiente" | "comprado" | "descartado";
+export type NeedPriority = "baja" | "media" | "alta";
 
 export interface Organization {
   id: string;
@@ -123,6 +125,22 @@ export interface IcalFeed {
   last_sync_error: string | null;
   created_by: string | null;
   created_at: string;
+}
+
+export interface Need {
+  id: string;
+  organization_id: string;
+  property_id: string;
+  environment_id: string | null;
+  title: string;
+  notes: string | null;
+  estimated_cost: number | null;
+  priority: NeedPriority;
+  status: NeedStatus;
+  purchased_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ExpenseCategory {
@@ -262,6 +280,7 @@ export interface Database {
       attachments: TableDef<Attachment>;
       audit_log: TableDef<AuditLog>;
       ical_feeds: TableDef<IcalFeed>;
+      needs: TableDef<Need>;
     };
   };
 }
