@@ -10,6 +10,7 @@ const NAV_ITEMS: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/reservations", label: "Reservas" },
   { href: "/expenses", label: "Gastos" },
   { href: "/needs", label: "Necesidades" },
+  { href: "/assets", label: "Activos fijos" },
   { href: "/loans", label: "Préstamos" },
   { href: "/investments", label: "Inversiones y participación" },
   { href: "/accounts", label: "Caja y bancos" },

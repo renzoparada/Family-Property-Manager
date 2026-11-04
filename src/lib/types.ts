@@ -143,6 +143,23 @@ export interface Need {
   updated_at: string;
 }
 
+export interface Asset {
+  id: string;
+  organization_id: string;
+  property_id: string;
+  environment_id: string | null;
+  detail: string;
+  acquired_date: string;
+  cost: number;
+  quantity: number;
+  notes: string | null;
+  source_need_id: string | null;
+  is_active: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ExpenseCategory {
   id: string;
   organization_id: string;
@@ -281,6 +298,7 @@ export interface Database {
       audit_log: TableDef<AuditLog>;
       ical_feeds: TableDef<IcalFeed>;
       needs: TableDef<Need>;
+      assets: TableDef<Asset>;
     };
   };
 }

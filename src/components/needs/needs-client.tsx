@@ -3,8 +3,10 @@
 import { useMemo, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
+import { AssetForm } from "@/components/assets/asset-form";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { createNeed, updateNeed, deleteNeed, setNeedStatus } from "@/lib/actions/needs";
+import { createAsset } from "@/lib/actions/assets";
 import type { Environment, Need, NeedPriority, NeedStatus, Property } from "@/lib/types";
 
 const PRIORITY_LABEL: Record<NeedPriority, string> = {
@@ -23,21 +25,25 @@ export function NeedsClient({
   needs,
   properties,
   environments,
+  convertedNeedIds,
   currency,
   canWrite,
 }: {
   needs: Need[];
   properties: Property[];
   environments: Environment[];
+  convertedNeedIds: string[];
   currency: string;
   canWrite: boolean;
 }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Need | null>(null);
+  const [converting, setConverting] = useState<Need | null>(null);
   const [propertyFilter, setPropertyFilter] = useState("");
   const [showPurchased, setShowPurchased] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const convertedSet = useMemo(() => new Set(convertedNeedIds), [convertedNeedIds]);
 
   const filtered = useMemo(
     () =>
@@ -143,6 +149,17 @@ export function NeedsClient({
                 </div>
                 {n.notes && <div className="mt-1 text-sm text-[var(--color-ink)]">{n.notes}</div>}
               </div>
+              {canWrite && n.status === "comprado" && (
+                convertedSet.has(n.id) ? (
+                  <span className="text-xs text-[var(--color-success)]" title="Ya está en Activos fijos">
+                    ✓ En Activos
+                  </span>
+                ) : (
+                  <button className="btn-secondary !px-2 text-xs" onClick={() => setConverting(n)}>
+                    + Activo fijo
+                  </button>
+                )
+              )}
               {canWrite && (
                 <button className="btn-ghost !px-2 text-xs" onClick={() => setEditing(n)}>
                   Editar
@@ -173,6 +190,25 @@ export function NeedsClient({
           onClose={() => setEditing(null)}
           onSubmit={(fd) => runAction(() => updateNeed(editing.id, fd), () => setEditing(null))}
           onDelete={() => runAction(() => deleteNeed(editing.id), () => setEditing(null))}
+          pending={pending}
+        />
+      )}
+
+      {converting && (
+        <AssetForm
+          title="Agregar a Activos fijos"
+          properties={properties}
+          environments={environments}
+          prefill={{
+            property_id: converting.property_id,
+            environment_id: converting.environment_id,
+            detail: converting.title,
+            acquired_date: converting.purchased_at,
+            cost: converting.estimated_cost,
+            source_need_id: converting.id,
+          }}
+          onClose={() => setConverting(null)}
+          onSubmit={(fd) => runAction(() => createAsset(fd), () => setConverting(null))}
           pending={pending}
         />
       )}
