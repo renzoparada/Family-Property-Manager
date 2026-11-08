@@ -6,7 +6,7 @@ import { StatCard } from "@/components/ui/stat-card";
 import { CashflowChart, type CashflowPoint } from "@/components/charts/cashflow-chart";
 import { BalanceChart, type BalancePoint } from "@/components/charts/balance-chart";
 import { formatCurrency, monthLabel, startOfMonthISO, endOfMonthISO, todayISO } from "@/lib/format";
-import type { Account, Expense, Loan, LoanPayment, Reservation, Transaction } from "@/lib/types";
+import type { Account, Expense, Income, Loan, LoanPayment, Reservation, Transaction } from "@/lib/types";
 
 export default async function DashboardPage() {
   const session = await getSessionContext();
@@ -17,6 +17,7 @@ export default async function DashboardPage() {
   const [
     { data: reservations },
     { data: expenses },
+    { data: incomes },
     { data: loans },
     { data: loanPayments },
     { data: accounts },
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
   ] = await Promise.all([
     supabase.from("reservations").select("*").eq("organization_id", orgId),
     supabase.from("expenses").select("*").eq("organization_id", orgId),
+    supabase.from("incomes").select("*").eq("organization_id", orgId),
     supabase.from("loans").select("*").eq("organization_id", orgId),
     supabase
       .from("loan_payments")
@@ -38,6 +40,7 @@ export default async function DashboardPage() {
   const currency = org?.currency ?? "BOB";
   const allReservations = (reservations ?? []) as Reservation[];
   const allExpenses = (expenses ?? []) as Expense[];
+  const allIncomes = (incomes ?? []) as Income[];
   const allLoans = (loans ?? []) as Loan[];
   const allLoanPayments = (loanPayments ?? []) as unknown as LoanPayment[];
   const allAccounts = (accounts ?? []) as Account[];
@@ -47,9 +50,18 @@ export default async function DashboardPage() {
   const monthEnd = endOfMonthISO();
   const today = todayISO();
 
-  const monthIncome = allReservations
-    .filter((r) => r.status === "pagado" && r.check_in >= monthStart && r.check_in <= monthEnd)
-    .reduce((s, r) => s + Number(r.net_amount), 0);
+  // "Ingresos" exists alongside Reservas because Reservas is shaped
+  // specifically for lodging bookings (check-in/check-out, huésped,
+  // plataforma) — a property whose revenue is ticket/shop sales instead
+  // of rentals (e.g. ECOPARK) uses Ingresos, which is just money in, no
+  // booking semantics. Both count toward the same financial totals.
+  const monthIncome =
+    allReservations
+      .filter((r) => r.status === "pagado" && r.check_in >= monthStart && r.check_in <= monthEnd)
+      .reduce((s, r) => s + Number(r.net_amount), 0) +
+    allIncomes
+      .filter((i) => i.date >= monthStart && i.date <= monthEnd)
+      .reduce((s, i) => s + Number(i.amount), 0);
 
   const monthExpenses = allExpenses
     .filter((e) => e.date >= monthStart && e.date <= monthEnd)
@@ -74,9 +86,11 @@ export default async function DashboardPage() {
     .filter((r) => r.status === "pendiente")
     .reduce((s, r) => s + Number(r.balance_amount), 0);
 
-  const totalIncome = allReservations
-    .filter((r) => r.status === "pagado")
-    .reduce((s, r) => s + Number(r.net_amount), 0);
+  const totalIncome =
+    allReservations
+      .filter((r) => r.status === "pagado")
+      .reduce((s, r) => s + Number(r.net_amount), 0) +
+    allIncomes.reduce((s, i) => s + Number(i.amount), 0);
   const totalExpenses = allExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const accumulatedProfit = totalIncome - totalExpenses;
 
@@ -87,9 +101,13 @@ export default async function DashboardPage() {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10);
     const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10);
-    const ingresos = allReservations
-      .filter((r) => r.status === "pagado" && r.check_in >= start && r.check_in <= end)
-      .reduce((s, r) => s + Number(r.net_amount), 0);
+    const ingresos =
+      allReservations
+        .filter((r) => r.status === "pagado" && r.check_in >= start && r.check_in <= end)
+        .reduce((s, r) => s + Number(r.net_amount), 0) +
+      allIncomes
+        .filter((inc) => inc.date >= start && inc.date <= end)
+        .reduce((s, inc) => s + Number(inc.amount), 0);
     const gastos = allExpenses
       .filter((e) => e.date >= start && e.date <= end)
       .reduce((s, e) => s + Number(e.amount), 0);

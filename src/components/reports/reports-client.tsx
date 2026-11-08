@@ -7,6 +7,7 @@ import { downloadCSV } from "@/lib/csv";
 import type {
   Expense,
   ExpenseCategory,
+  Income,
   Investment,
   Loan,
   OrganizationMember,
@@ -24,6 +25,7 @@ function endOfYearISO() {
 export function ReportsClient({
   reservations,
   expenses,
+  incomes,
   investments,
   loans,
   properties,
@@ -33,6 +35,7 @@ export function ReportsClient({
 }: {
   reservations: Reservation[];
   expenses: Expense[];
+  incomes: Income[];
   investments: Investment[];
   loans: Loan[];
   properties: Property[];
@@ -81,17 +84,30 @@ export function ReportsClient({
     [investments, effectiveFrom, effectiveTo, propertyFilter]
   );
 
-  const totalIncome = filteredReservations
-    .filter((r) => r.status === "pagado")
-    .reduce((s, r) => s + Number(r.net_amount), 0);
+  const filteredIncomes = useMemo(
+    () =>
+      incomes.filter(
+        (i) =>
+          i.date >= effectiveFrom &&
+          i.date <= effectiveTo &&
+          (!propertyFilter || i.property_id === propertyFilter)
+      ),
+    [incomes, effectiveFrom, effectiveTo, propertyFilter]
+  );
+
+  const totalIncome =
+    filteredReservations.filter((r) => r.status === "pagado").reduce((s, r) => s + Number(r.net_amount), 0) +
+    filteredIncomes.reduce((s, i) => s + Number(i.amount), 0);
   const totalExpenses = filteredExpenses.reduce((s, e) => s + Number(e.amount), 0);
   const totalInvested = filteredInvestments.reduce((s, i) => s + Number(i.amount), 0);
   const profit = totalIncome - totalExpenses;
 
   const byProperty = properties.map((p) => {
-    const income = filteredReservations
-      .filter((r) => r.property_id === p.id && r.status === "pagado")
-      .reduce((s, r) => s + Number(r.net_amount), 0);
+    const income =
+      filteredReservations
+        .filter((r) => r.property_id === p.id && r.status === "pagado")
+        .reduce((s, r) => s + Number(r.net_amount), 0) +
+      filteredIncomes.filter((i) => i.property_id === p.id).reduce((s, i) => s + Number(i.amount), 0);
     const cost = filteredExpenses.filter((e) => e.property_id === p.id).reduce((s, e) => s + Number(e.amount), 0);
     return { name: p.name, income, cost, profit: income - cost };
   });
@@ -129,6 +145,18 @@ export function ReportsClient({
         categories.find((c) => c.id === e.category_id)?.name ?? "",
         e.description ?? "",
         e.amount,
+      ]),
+    ]);
+  }
+
+  function exportIncomesCSV() {
+    downloadCSV("ingresos.csv", [
+      ["Fecha", "Propiedad", "Descripción", "Monto"],
+      ...filteredIncomes.map((i) => [
+        i.date,
+        properties.find((p) => p.id === i.property_id)?.name ?? "",
+        i.description ?? "",
+        i.amount,
       ]),
     ]);
   }
@@ -175,6 +203,9 @@ export function ReportsClient({
         <div className="ml-auto flex gap-2">
           <button className="btn-secondary text-xs" onClick={exportReservationsCSV}>
             Exportar reservas CSV
+          </button>
+          <button className="btn-secondary text-xs" onClick={exportIncomesCSV}>
+            Exportar ingresos CSV
           </button>
           <button className="btn-secondary text-xs" onClick={exportExpensesCSV}>
             Exportar gastos CSV

@@ -187,6 +187,33 @@ export interface Expense {
   updated_at: string;
 }
 
+export interface IncomeCategory {
+  id: string;
+  organization_id: string;
+  name: string;
+  icon: string | null;
+  created_at: string;
+}
+
+export interface Income {
+  id: string;
+  organization_id: string;
+  property_id: string;
+  environment_id: string | null;
+  category_id: string | null;
+  date: string;
+  amount: number;
+  description: string | null;
+  received_by: string | null;
+  received_from: string | null;
+  payment_method: PaymentMethod;
+  account_id: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Investment {
   id: string;
   organization_id: string;
@@ -289,6 +316,8 @@ export interface Database {
       reservations: TableDef<Reservation>;
       expense_categories: TableDef<ExpenseCategory>;
       expenses: TableDef<Expense>;
+      income_categories: TableDef<IncomeCategory>;
+      incomes: TableDef<Income>;
       investments: TableDef<Investment>;
       loans: TableDef<Loan>;
       loan_payments: TableDef<LoanPayment>;

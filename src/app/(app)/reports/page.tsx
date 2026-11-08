@@ -6,6 +6,7 @@ import { ReportsClient } from "@/components/reports/reports-client";
 import type {
   Expense,
   ExpenseCategory,
+  Income,
   Investment,
   Loan,
   OrganizationMember,
@@ -22,6 +23,7 @@ export default async function ReportsPage() {
   const [
     { data: reservations },
     { data: expenses },
+    { data: incomes },
     { data: investments },
     { data: loans },
     { data: properties },
@@ -31,6 +33,7 @@ export default async function ReportsPage() {
   ] = await Promise.all([
     supabase.from("reservations").select("*").eq("organization_id", orgId),
     supabase.from("expenses").select("*").eq("organization_id", orgId),
+    supabase.from("incomes").select("*").eq("organization_id", orgId),
     supabase.from("investments").select("*").eq("organization_id", orgId),
     supabase.from("loans").select("*").eq("organization_id", orgId),
     supabase.from("properties").select("*").eq("organization_id", orgId),
@@ -45,6 +48,7 @@ export default async function ReportsPage() {
       <ReportsClient
         reservations={(reservations ?? []) as Reservation[]}
         expenses={(expenses ?? []) as Expense[]}
+        incomes={(incomes ?? []) as Income[]}
         investments={(investments ?? []) as Investment[]}
         loans={(loans ?? []) as Loan[]}
         properties={(properties ?? []) as Property[]}
