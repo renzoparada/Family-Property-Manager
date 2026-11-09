@@ -11,6 +11,7 @@ export interface AssetPrefill {
   acquired_date?: string | null;
   cost?: number | null;
   source_need_id?: string | null;
+  source_expense_id?: string | null;
 }
 
 export function AssetForm({
@@ -49,6 +50,9 @@ export function AssetForm({
       >
         {prefill?.source_need_id && (
           <input type="hidden" name="source_need_id" value={prefill.source_need_id} />
+        )}
+        {prefill?.source_expense_id && (
+          <input type="hidden" name="source_expense_id" value={prefill.source_expense_id} />
         )}
 
         <div>

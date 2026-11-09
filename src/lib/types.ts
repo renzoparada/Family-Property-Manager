@@ -154,6 +154,7 @@ export interface Asset {
   quantity: number;
   notes: string | null;
   source_need_id: string | null;
+  source_expense_id: string | null;
   is_active: boolean;
   created_by: string | null;
   created_at: string;

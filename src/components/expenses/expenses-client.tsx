@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AttachmentUploader } from "@/components/ui/attachment-uploader";
+import { AssetForm } from "@/components/assets/asset-form";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { useAttachments } from "@/lib/use-attachments";
 import {
@@ -12,6 +13,7 @@ import {
   deleteExpense,
   createExpenseCategory,
 } from "@/lib/actions/expenses";
+import { createAsset } from "@/lib/actions/assets";
 import type {
   Account,
   Environment,
@@ -37,6 +39,7 @@ export function ExpensesClient({
   categories,
   members,
   attachmentCounts,
+  convertedExpenseIds,
   currency,
   canWrite,
 }: {
@@ -47,16 +50,19 @@ export function ExpensesClient({
   categories: ExpenseCategory[];
   members: OrganizationMember[];
   attachmentCounts: Record<string, number>;
+  convertedExpenseIds: string[];
   currency: string;
   canWrite: boolean;
 }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
+  const [converting, setConverting] = useState<Expense | null>(null);
   const [propertyFilter, setPropertyFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [categoryList, setCategoryList] = useState(categories);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const convertedSet = useMemo(() => new Set(convertedExpenseIds), [convertedExpenseIds]);
 
   const filtered = useMemo(
     () =>
@@ -155,6 +161,7 @@ export function ExpensesClient({
                 <th>Método</th>
                 <th>Monto</th>
                 <th>Adjuntos</th>
+                <th>Activo fijo</th>
                 <th></th>
               </tr>
             </thead>
@@ -178,6 +185,19 @@ export function ExpensesClient({
                       </button>
                     ) : (
                       <span className="text-xs text-[var(--color-muted)]">—</span>
+                    )}
+                  </td>
+                  <td>
+                    {convertedSet.has(e.id) ? (
+                      <span className="text-xs text-[var(--color-success)]" title="Ya está en Activos fijos">
+                        ✓ En Activos
+                      </span>
+                    ) : (
+                      canWrite && (
+                        <button className="btn-secondary !px-2 text-xs" onClick={() => setConverting(e)}>
+                          + Activo fijo
+                        </button>
+                      )
                     )}
                   </td>
                   <td>
@@ -230,6 +250,25 @@ export function ExpensesClient({
           onClose={() => setEditing(null)}
           onSubmit={(fd) => runAction(() => updateExpense(editing.id, fd), () => setEditing(null))}
           onDelete={canWrite ? () => runAction(() => deleteExpense(editing.id), () => setEditing(null)) : undefined}
+          pending={pending}
+        />
+      )}
+
+      {converting && (
+        <AssetForm
+          title="Agregar a Activos fijos"
+          properties={properties}
+          environments={environments}
+          prefill={{
+            property_id: converting.property_id,
+            environment_id: converting.environment_id,
+            detail: converting.description ?? categoryName(converting.category_id),
+            acquired_date: converting.date,
+            cost: converting.amount,
+            source_expense_id: converting.id,
+          }}
+          onClose={() => setConverting(null)}
+          onSubmit={(fd) => runAction(() => createAsset(fd), () => setConverting(null))}
           pending={pending}
         />
       )}

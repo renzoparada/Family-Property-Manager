@@ -14,6 +14,7 @@ export async function createAsset(formData: FormData): Promise<ActionResult> {
     const quantityRaw = str(formData.get("quantity"));
     const quantity = quantityRaw ? Math.max(1, Math.round(Number(quantityRaw))) : 1;
     const sourceNeedId = str(formData.get("source_need_id"));
+    const sourceExpenseId = str(formData.get("source_expense_id"));
 
     const { error } = await supabase.from("assets").insert({
       organization_id: orgId,
@@ -25,17 +26,19 @@ export async function createAsset(formData: FormData): Promise<ActionResult> {
       quantity,
       notes: str(formData.get("notes")),
       source_need_id: sourceNeedId,
+      source_expense_id: sourceExpenseId,
       created_by: userId,
     });
     if (error) {
       if (error.code === "23505") {
-        throw new Error("Esa necesidad ya se registró como activo fijo.");
+        throw new Error("Eso ya se registró como activo fijo.");
       }
       throw new Error(error.message);
     }
 
     revalidatePath("/assets");
     revalidatePath("/needs");
+    revalidatePath("/expenses");
     return { error: null };
   });
 }
