@@ -6,6 +6,7 @@ import type { MemberRole } from "@/lib/types";
 
 const NAV_ITEMS: { href: string; label: string; adminOnly?: boolean }[] = [
   { href: "/dashboard", label: "Panel" },
+  { href: "/tasks", label: "Tareas" },
   { href: "/properties", label: "Propiedades" },
   { href: "/reservations", label: "Reservas" },
   { href: "/income", label: "Ingresos" },

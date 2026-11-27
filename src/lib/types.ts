@@ -20,6 +20,8 @@ export type AccountType = "caja" | "banco";
 export type LoanStatus = "pendiente" | "parcial" | "pagado";
 export type NeedStatus = "pendiente" | "comprado" | "descartado";
 export type NeedPriority = "baja" | "media" | "alta";
+export type TaskStatus = "pendiente" | "en_proceso" | "en_obs" | "finalizado";
+export type TaskPriority = "alta" | "media" | "baja";
 
 export interface Organization {
   id: string;
@@ -138,6 +140,22 @@ export interface Need {
   priority: NeedPriority;
   status: NeedStatus;
   purchased_at: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Task {
+  id: string;
+  organization_id: string;
+  property_id: string | null;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigned_to: string | null;
+  due_date: string | null;
+  position: number;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -328,6 +346,7 @@ export interface Database {
       audit_log: TableDef<AuditLog>;
       ical_feeds: TableDef<IcalFeed>;
       needs: TableDef<Need>;
+      tasks: TableDef<Task>;
       assets: TableDef<Asset>;
     };
   };
