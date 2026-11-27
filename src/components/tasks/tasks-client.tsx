@@ -97,7 +97,7 @@ export function TasksClient({
 
       {error && <p className="mb-3 text-sm text-[var(--color-danger)]">{error}</p>}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
         {COLUMNS.map((col) => {
           const colTasks = filtered.filter((t) => t.status === col.status);
           return (
@@ -132,7 +132,7 @@ export function TasksClient({
                       <>
                         <label className="mt-2 block text-[10px] uppercase text-[var(--color-muted)]">Mover a</label>
                         <select
-                          className="input !h-7 w-full min-w-0 py-0 text-xs"
+                          className="input w-full min-w-0 text-xs"
                           value={t.status}
                           disabled={pending}
                           onChange={(e) => moveTask(t, e.target.value as TaskStatus)}
