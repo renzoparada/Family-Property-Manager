@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useRef, useState, useTransition } from "react";
 import { Modal } from "@/components/ui/modal";
 import { formatDate } from "@/lib/format";
 import { createTask, updateTask, deleteTask, setTaskStatus } from "@/lib/actions/tasks";
@@ -41,6 +41,8 @@ export function TasksClient({
   const [propertyFilter, setPropertyFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [activeTab, setActiveTab] = useState<TaskStatus>("pendiente");
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(
     () => (propertyFilter ? tasks.filter((t) => t.property_id === propertyFilter) : tasks),
@@ -77,6 +79,61 @@ export function TasksClient({
     runAction(() => setTaskStatus(task.id, status));
   }
 
+  // Mobile: tapping a tab scrolls the snap-carousel to that column instead
+  // of stacking all four columns into one long scroll — with many
+  // pendientes, reaching "Finalizados" otherwise means endless scrolling.
+  function goToTab(status: TaskStatus) {
+    setActiveTab(status);
+    const idx = COLUMNS.findIndex((c) => c.status === status);
+    const el = carouselRef.current;
+    if (el) el.scrollTo({ left: idx * el.clientWidth, behavior: "smooth" });
+  }
+
+  function handleCarouselScroll() {
+    const el = carouselRef.current;
+    if (!el || el.clientWidth === 0) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setActiveTab(COLUMNS[idx]?.status ?? COLUMNS[0].status);
+  }
+
+  function renderCard(t: Task) {
+    return (
+      <div key={t.id} className="card min-w-0 p-3 text-sm">
+        <div className="flex items-start justify-between gap-2">
+          <button
+            className="min-w-0 flex-1 text-left font-medium break-words text-[var(--color-ink)]"
+            onClick={() => setEditing(t)}
+          >
+            {t.title}
+          </button>
+          <span className={`badge shrink-0 ${PRIORITY_STYLE[t.priority]}`}>{PRIORITY_LABEL[t.priority]}</span>
+        </div>
+        <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-[var(--color-muted)]">
+          {propertyName(t.property_id) && <span>{propertyName(t.property_id)}</span>}
+          {memberName(t.assigned_to) && <span>· {memberName(t.assigned_to)}</span>}
+          {t.due_date && <span>· vence {formatDate(t.due_date)}</span>}
+        </div>
+        {canWrite && (
+          <>
+            <label className="mt-2 block text-[10px] uppercase text-[var(--color-muted)]">Mover a</label>
+            <select
+              className="input w-full min-w-0 text-xs"
+              value={t.status}
+              disabled={pending}
+              onChange={(e) => moveTask(t, e.target.value as TaskStatus)}
+            >
+              {COLUMNS.map((c) => (
+                <option key={c.status} value={c.status}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -97,7 +154,52 @@ export function TasksClient({
 
       {error && <p className="mb-3 text-sm text-[var(--color-danger)]">{error}</p>}
 
-      <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
+      {/* Mobile/tablet: swipeable carousel, one column at a time, with tabs to jump directly */}
+      <div className="lg:hidden">
+        <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+          {COLUMNS.map((col) => {
+            const count = filtered.filter((t) => t.status === col.status).length;
+            return (
+              <button
+                key={col.status}
+                onClick={() => goToTab(col.status)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                  activeTab === col.status
+                    ? "bg-[var(--color-accent)] text-[var(--color-accent-ink)]"
+                    : "bg-[var(--color-subtle)] text-[var(--color-muted)]"
+                }`}
+              >
+                {col.label} ({count})
+              </button>
+            );
+          })}
+        </div>
+        <div
+          ref={carouselRef}
+          onScroll={handleCarouselScroll}
+          className="flex snap-x snap-mandatory overflow-x-auto"
+          style={{ scrollbarWidth: "none" }}
+        >
+          {COLUMNS.map((col) => {
+            const colTasks = filtered.filter((t) => t.status === col.status);
+            return (
+              <div key={col.status} className="w-full shrink-0 snap-start">
+                <div className="space-y-2 pr-1">
+                  {colTasks.length === 0 && (
+                    <p className="rounded-md border border-dashed border-[var(--color-border)] p-3 text-center text-xs text-[var(--color-muted)]">
+                      Sin tareas
+                    </p>
+                  )}
+                  {colTasks.map((t) => renderCard(t))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop: all four columns side by side */}
+      <div className="hidden gap-4 lg:grid lg:grid-cols-2 2xl:grid-cols-4">
         {COLUMNS.map((col) => {
           const colTasks = filtered.filter((t) => t.status === col.status);
           return (
@@ -112,41 +214,7 @@ export function TasksClient({
                     Sin tareas
                   </p>
                 )}
-                {colTasks.map((t) => (
-                  <div key={t.id} className="card min-w-0 p-3 text-sm">
-                    <div className="flex items-start justify-between gap-2">
-                      <button
-                        className="min-w-0 flex-1 text-left font-medium break-words text-[var(--color-ink)]"
-                        onClick={() => setEditing(t)}
-                      >
-                        {t.title}
-                      </button>
-                      <span className={`badge shrink-0 ${PRIORITY_STYLE[t.priority]}`}>{PRIORITY_LABEL[t.priority]}</span>
-                    </div>
-                    <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-[var(--color-muted)]">
-                      {propertyName(t.property_id) && <span>{propertyName(t.property_id)}</span>}
-                      {memberName(t.assigned_to) && <span>· {memberName(t.assigned_to)}</span>}
-                      {t.due_date && <span>· vence {formatDate(t.due_date)}</span>}
-                    </div>
-                    {canWrite && (
-                      <>
-                        <label className="mt-2 block text-[10px] uppercase text-[var(--color-muted)]">Mover a</label>
-                        <select
-                          className="input w-full min-w-0 text-xs"
-                          value={t.status}
-                          disabled={pending}
-                          onChange={(e) => moveTask(t, e.target.value as TaskStatus)}
-                        >
-                          {COLUMNS.map((c) => (
-                            <option key={c.status} value={c.status}>
-                              {c.label}
-                            </option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-                  </div>
-                ))}
+                {colTasks.map((t) => renderCard(t))}
               </div>
             </div>
           );
