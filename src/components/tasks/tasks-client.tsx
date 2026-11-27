@@ -97,7 +97,7 @@ export function TasksClient({
 
       {error && <p className="mb-3 text-sm text-[var(--color-danger)]">{error}</p>}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {COLUMNS.map((col) => {
           const colTasks = filtered.filter((t) => t.status === col.status);
           return (
@@ -113,9 +113,12 @@ export function TasksClient({
                   </p>
                 )}
                 {colTasks.map((t) => (
-                  <div key={t.id} className="card p-3 text-sm">
+                  <div key={t.id} className="card min-w-0 p-3 text-sm">
                     <div className="flex items-start justify-between gap-2">
-                      <button className="text-left font-medium text-[var(--color-ink)]" onClick={() => setEditing(t)}>
+                      <button
+                        className="min-w-0 flex-1 text-left font-medium break-words text-[var(--color-ink)]"
+                        onClick={() => setEditing(t)}
+                      >
                         {t.title}
                       </button>
                       <span className={`badge shrink-0 ${PRIORITY_STYLE[t.priority]}`}>{PRIORITY_LABEL[t.priority]}</span>
@@ -126,18 +129,21 @@ export function TasksClient({
                       {t.due_date && <span>· vence {formatDate(t.due_date)}</span>}
                     </div>
                     {canWrite && (
-                      <select
-                        className="input mt-2 !h-7 py-0 text-xs"
-                        value={t.status}
-                        disabled={pending}
-                        onChange={(e) => moveTask(t, e.target.value as TaskStatus)}
-                      >
-                        {COLUMNS.map((c) => (
-                          <option key={c.status} value={c.status}>
-                            Mover a: {c.label}
-                          </option>
-                        ))}
-                      </select>
+                      <>
+                        <label className="mt-2 block text-[10px] uppercase text-[var(--color-muted)]">Mover a</label>
+                        <select
+                          className="input !h-7 w-full min-w-0 py-0 text-xs"
+                          value={t.status}
+                          disabled={pending}
+                          onChange={(e) => moveTask(t, e.target.value as TaskStatus)}
+                        >
+                          {COLUMNS.map((c) => (
+                            <option key={c.status} value={c.status}>
+                              {c.label}
+                            </option>
+                          ))}
+                        </select>
+                      </>
                     )}
                   </div>
                 ))}
