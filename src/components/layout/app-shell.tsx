@@ -41,7 +41,7 @@ export function AppShell({
       </aside>
 
       {/* Mobile top bar */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 md:hidden">
           <button
             type="button"
@@ -86,7 +86,7 @@ export function AppShell({
           </div>
         )}
 
-        <main className="flex-1 bg-[var(--color-canvas)] p-4 md:p-8">{children}</main>
+        <main className="min-w-0 flex-1 bg-[var(--color-canvas)] p-4 md:p-8">{children}</main>
       </div>
     </div>
   );
